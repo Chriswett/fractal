@@ -1,5 +1,6 @@
-import { ColorProfile, RenderQualityHint, Scene } from "../../state/types";
-import { IFractalRenderer, RenderRequest, RenderStillRequest } from "../types";
+import { ColorProfile, FractalType, RenderQualityHint, Scene } from "../../state/types";
+import { IFractalRenderer, RenderPass, RenderRequest, RenderStillRequest } from "../types";
+import { nextFrame } from "../../utils/async";
 
 const MAX_STOPS = 8;
 
@@ -23,8 +24,9 @@ uniform float uScale;
 uniform float uRotation;
 uniform int uMaxIter;
 uniform float uEscapeRadius;
-uniform int uIsJulia;
+uniform int uFractalKind;
 uniform vec2 uJuliaC;
+uniform float uParameter;
 
 uniform int uStopCount;
 uniform float uStopT[${MAX_STOPS}];
@@ -117,6 +119,12 @@ vec3 sampleGradient(float t) {
   return color;
 }
 
+vec2 rotateVec(vec2 v, float angle) {
+  float c = cos(angle);
+  float s = sin(angle);
+  return vec2(v.x * c - v.y * s, v.x * s + v.y * c);
+}
+
 void main() {
   vec2 pixel = gl_FragCoord.xy - 0.5 * uResolution;
   float cosR = cos(uRotation);
@@ -124,8 +132,10 @@ void main() {
   vec2 rotated = vec2(pixel.x * cosR - pixel.y * sinR, pixel.x * sinR + pixel.y * cosR);
   vec2 world = uCenter + rotated * uScale;
 
-  vec2 c = uIsJulia == 1 ? uJuliaC : world;
-  vec2 z = uIsJulia == 1 ? world : vec2(0.0);
+  bool isJulia = uFractalKind >= 4;
+  float phase = radians(uParameter);
+  vec2 c = isJulia ? rotateVec(uJuliaC, phase) : world;
+  vec2 z = isJulia ? world : vec2(0.0);
   float escapeR2 = uEscapeRadius * uEscapeRadius;
   float iter = 0.0;
   float smoothIter = 0.0;
@@ -136,9 +146,32 @@ void main() {
       smoothIter = iter;
       break;
     }
-    float x = (z.x * z.x - z.y * z.y) + c.x;
-    float y = (2.0 * z.x * z.y) + c.y;
-    z = vec2(x, y);
+    float x = z.x;
+    float y = z.y;
+    vec2 nextZ;
+    if (uFractalKind == 1) {
+      vec2 zPhase = rotateVec(z, phase);
+      float x2 = zPhase.x * zPhase.x;
+      float y2 = zPhase.y * zPhase.y;
+      float x3 = zPhase.x * (x2 - 3.0 * y2);
+      float y3 = zPhase.y * (3.0 * x2 - y2);
+      nextZ = vec2(x3, y3) + c;
+    } else if (uFractalKind == 2 || uFractalKind == 5) {
+      float blend = uFractalKind == 2 ? clamp(uParameter, 0.0, 1.0) : 1.0;
+      vec2 baseZ = mix(z, vec2(x, -y), blend);
+      nextZ = vec2(baseZ.x * baseZ.x - baseZ.y * baseZ.y, 2.0 * baseZ.x * baseZ.y) + c;
+    } else if (uFractalKind == 3 || uFractalKind == 6) {
+      float blend = uFractalKind == 3 ? clamp(uParameter, 0.0, 1.0) : 1.0;
+      vec2 absZ = vec2(abs(x), abs(y));
+      vec2 baseZ = mix(z, absZ, blend);
+      nextZ = vec2(baseZ.x * baseZ.x - baseZ.y * baseZ.y, 2.0 * baseZ.x * baseZ.y) + c;
+    } else if (uFractalKind == 0) {
+      vec2 zPhase = rotateVec(z, phase);
+      nextZ = vec2(zPhase.x * zPhase.x - zPhase.y * zPhase.y, 2.0 * zPhase.x * zPhase.y) + c;
+    } else {
+      nextZ = vec2(x * x - y * y, 2.0 * x * y) + c;
+    }
+    z = nextZ;
     if (dot(z, z) > escapeR2) {
       iter = float(i);
       float log_zn = log(dot(z, z)) / 2.0;
@@ -165,23 +198,33 @@ export class WebGLRenderer implements IFractalRenderer {
   private program: WebGLProgram | null = null;
   private vao: WebGLVertexArrayObject | null = null;
   private uniformLocations: Record<string, WebGLUniformLocation | null> = {};
+  private activeJobId = 0;
 
   async render(request: RenderRequest) {
-    this.renderInternal(request.canvas, request.scene, request.qualityHint, request.pass, request.signal);
+    this.activeJobId = request.jobId;
+    await this.renderInternal(
+      request.canvas,
+      request.scene,
+      request.qualityHint,
+      request.pass,
+      request.signal,
+      request.jobId
+    );
   }
 
   async renderStill(request: RenderStillRequest) {
-    this.renderInternal(request.canvas, request.scene, request.qualityHint, null, null);
+    await this.renderInternal(request.canvas, request.scene, request.qualityHint, null, null, null);
   }
 
-  private renderInternal(
+  private async renderInternal(
     canvas: HTMLCanvasElement,
     scene: Scene,
     qualityHint: RenderQualityHint,
-    pass: { resolutionScale: number } | null,
-    signal: AbortSignal | null
+    pass: RenderPass | null,
+    signal: AbortSignal | null,
+    jobId: number | null
   ) {
-    if (signal?.aborted) {
+    if (signal?.aborted || (jobId !== null && jobId !== this.activeJobId)) {
       return;
     }
 
@@ -190,9 +233,10 @@ export class WebGLRenderer implements IFractalRenderer {
       return;
     }
 
-    this.resizeCanvas(canvas, scene, pass?.resolutionScale);
+    const resolutionScale = Math.max(1, pass?.resolutionScale ?? scene.render.resolutionScale);
+    this.resizeCanvas(canvas, scene, resolutionScale);
 
-    if (signal?.aborted) {
+    if (signal?.aborted || (jobId !== null && jobId !== this.activeJobId)) {
       return;
     }
 
@@ -202,23 +246,69 @@ export class WebGLRenderer implements IFractalRenderer {
     const { viewport, params, color } = scene;
     const maxIter = "maxIter" in params ? params.maxIter : 300;
     const escapeRadius = "escapeRadius" in params ? params.escapeRadius : 4;
-    const isJulia = scene.fractalType === "julia" ? 1 : 0;
-    const juliaC = scene.fractalType === "julia" ? [params.cRe, params.cIm] : [0, 0];
+    const juliaC =
+      "cRe" in params && "cIm" in params
+        ? [params.cRe, params.cIm]
+        : [0, 0];
+    const parameter = "parameter" in params ? params.parameter : 0;
+    const fractalKind = getEscapeFractalKind(scene.fractalType);
     const qualityScale = qualityHint === "interactive" ? 0.6 : 1;
     const iterValue = Math.max(40, Math.floor(maxIter * qualityScale));
 
     gl.uniform2f(this.uniformLocations.uResolution, gl.canvas.width, gl.canvas.height);
     gl.uniform2f(this.uniformLocations.uCenter, viewport.centerX, viewport.centerY);
-    gl.uniform1f(this.uniformLocations.uScale, viewport.scale);
+    gl.uniform1f(this.uniformLocations.uScale, viewport.scale * resolutionScale);
     gl.uniform1f(this.uniformLocations.uRotation, viewport.rotation ?? 0);
     gl.uniform1i(this.uniformLocations.uMaxIter, iterValue);
     gl.uniform1f(this.uniformLocations.uEscapeRadius, escapeRadius);
-    gl.uniform1i(this.uniformLocations.uIsJulia, isJulia);
+    gl.uniform1i(this.uniformLocations.uFractalKind, fractalKind);
     gl.uniform2f(this.uniformLocations.uJuliaC, juliaC[0], juliaC[1]);
+    gl.uniform1f(this.uniformLocations.uParameter, parameter);
 
     this.applyColorProfile(gl, color);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    const width = gl.canvas.width;
+    const height = gl.canvas.height;
+    const tileSize = Math.max(1, Math.floor(pass?.tileSize ?? 1));
+    const useTiling = qualityHint === "final" && tileSize >= 4;
+
+    if (!useTiling) {
+      gl.disable(gl.SCISSOR_TEST);
+      gl.viewport(0, 0, width, height);
+      if (signal?.aborted || (jobId !== null && jobId !== this.activeJobId)) {
+        return;
+      }
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return;
+    }
+
+    const tilesX = Math.max(1, Math.ceil(width / tileSize));
+    const tilesY = Math.max(1, Math.ceil(height / tileSize));
+    const shouldYield = tilesX * tilesY > 512;
+
+    gl.enable(gl.SCISSOR_TEST);
+
+    for (let ty = 0; ty < tilesY; ty += 1) {
+      for (let tx = 0; tx < tilesX; tx += 1) {
+        if (signal?.aborted || (jobId !== null && jobId !== this.activeJobId)) {
+          gl.disable(gl.SCISSOR_TEST);
+          return;
+        }
+        const x = tx * tileSize;
+        const y = ty * tileSize;
+        const w = Math.min(tileSize, width - x);
+        const h = Math.min(tileSize, height - y);
+        gl.viewport(x, y, w, h);
+        gl.scissor(x, y, w, h);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+      if (shouldYield && ty % 4 === 3) {
+        await nextFrame();
+      }
+    }
+
+    gl.disable(gl.SCISSOR_TEST);
+    gl.viewport(0, 0, width, height);
   }
 
   private applyColorProfile(gl: WebGL2RenderingContext, profile: ColorProfile) {
@@ -292,8 +382,9 @@ export class WebGLRenderer implements IFractalRenderer {
       uRotation: gl.getUniformLocation(program, "uRotation"),
       uMaxIter: gl.getUniformLocation(program, "uMaxIter"),
       uEscapeRadius: gl.getUniformLocation(program, "uEscapeRadius"),
-      uIsJulia: gl.getUniformLocation(program, "uIsJulia"),
+      uFractalKind: gl.getUniformLocation(program, "uFractalKind"),
       uJuliaC: gl.getUniformLocation(program, "uJuliaC"),
+      uParameter: gl.getUniformLocation(program, "uParameter"),
       uStopCount: gl.getUniformLocation(program, "uStopCount"),
       uStopT: gl.getUniformLocation(program, "uStopT"),
       uStopColor: gl.getUniformLocation(program, "uStopColor"),
@@ -368,4 +459,24 @@ function createProgram(gl: WebGL2RenderingContext, vertex: string, fragment: str
   gl.deleteShader(vertexShader);
   gl.deleteShader(fragmentShader);
   return program;
+}
+
+function getEscapeFractalKind(type: FractalType) {
+  switch (type) {
+    case "multibrot3":
+      return 1;
+    case "tricorn":
+      return 2;
+    case "burning-ship":
+      return 3;
+    case "julia":
+      return 4;
+    case "tricorn-julia":
+      return 5;
+    case "burning-ship-julia":
+      return 6;
+    case "mandelbrot":
+    default:
+      return 0;
+  }
 }

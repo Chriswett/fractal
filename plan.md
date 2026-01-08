@@ -26,6 +26,48 @@ Varje fraktaltyp ska ha:
 
 ---
 
+## 2.1 Scope – Version 2 (v2)
+
+### Fraktaltyper
+I v2 ersätts Sierpinski och Koch av följande fraktaler:
+
+**Mandelbrot-familjen**
+1. Mandelbrot (klassisk)
+2. Multibrot d=3
+3. Tricorn
+4. Burning Ship
+
+**Julia-familjen**
+1. Julia (klassisk)
+2. Tricorn-Julia
+3. Burning Ship-Julia
+
+**Newton/Halley**
+1. Newton för z^3-1
+2. Halley för z^3-1
+3. Newton för sin z
+
+### Seed / Parameter (v2)
+Varje fraktaltyp har en justerbar parameter (reglage + input) i Gallery ovanför PRESETS. Parametern är per fraktaltyp och sparas i Scene (och därmed i presets/journeys). Reglaget uppdaterar först när man släpper (ingen kontinuerlig rendering).
+
+**Föreslagen parameter per fraktaltyp**
+- Mandelbrot: "Parameter - Phase" (grader). Range: -180 .. 180, step 1. (Rotationsfas på z innan potens.)
+- Multibrot d=3: "Parameter - Phase" (grader). Range: -180 .. 180, step 1. (Rotationsfas på z innan potens.)
+- Tricorn: "Parameter - Conjugation". Range: 0 .. 1, step 0.01. (Blend mellan z och conj(z).)
+- Burning Ship: "Parameter - Fold". Range: 0 .. 1, step 0.01. (Blend mellan z och abs(z).)
+- Julia: "Parameter - C angle" (grader). Range: -180 .. 180, step 1. (C roterar runt origo med samma magnitud som nuvarande preset.)
+- Tricorn-Julia: "Parameter - C angle" (grader). Range: -180 .. 180, step 1.
+- Burning Ship-Julia: "Parameter - C angle" (grader). Range: -180 .. 180, step 1.
+- Newton z^3-1: "Parameter - Phase" (grader). Range: -180 .. 180, step 1. (z^3 - e^{i*phi} = 0.)
+- Halley z^3-1: "Parameter - Phase" (grader). Range: -180 .. 180, step 1.
+- Newton sin z: "Parameter - Phase" (grader). Range: -180 .. 180, step 1. (sin(z + phi).)
+
+Varje fraktaltyp ska ha:
+- Fördefinierade presets
+- Möjlighet för användaren att spara egna presets
+
+---
+
 ## 3. Användarupplevelse (UX)
 
 ### Visuell stil

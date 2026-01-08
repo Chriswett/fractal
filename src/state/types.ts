@@ -1,4 +1,14 @@
-export type FractalType = "mandelbrot" | "julia" | "sierpinski" | "koch";
+export type FractalType =
+  | "mandelbrot"
+  | "multibrot3"
+  | "tricorn"
+  | "burning-ship"
+  | "julia"
+  | "tricorn-julia"
+  | "burning-ship-julia"
+  | "newton-z3"
+  | "halley-z3"
+  | "newton-sin";
 
 export type RGBA = {
   r: number;
@@ -19,26 +29,24 @@ export type Viewport = {
   rotation?: number;
 };
 
-export type MandelbrotParams = {
+export type EscapeTimeParams = {
   maxIter: number;
   escapeRadius: number;
+  parameter: number;
 };
 
-export type JuliaParams = MandelbrotParams & {
+export type JuliaParams = EscapeTimeParams & {
   cRe: number;
   cIm: number;
 };
 
-export type SierpinskiParams = {
-  depth: number;
+export type NewtonParams = {
+  maxIter: number;
+  tolerance: number;
+  parameter: number;
 };
 
-export type KochParams = {
-  depth: number;
-  variant?: "curve" | "snowflake";
-};
-
-export type FractalParams = MandelbrotParams | JuliaParams | SierpinskiParams | KochParams;
+export type FractalParams = EscapeTimeParams | JuliaParams | NewtonParams;
 
 export type ColorProfile = {
   gradientStops: GradientStop[];
@@ -75,6 +83,14 @@ export type Preset = {
   thumbnail?: string;
 };
 
+export type Journey = {
+  id: string;
+  name: string;
+  kind: "user";
+  scene: Scene;
+  timeline: Timeline;
+};
+
 export type Timeline = {
   durationMs: number;
   keyframes: Keyframe[];
@@ -90,6 +106,8 @@ export type RenderQualityHint = "interactive" | "final";
 export type UiPreferences = {
   activePanel: "gallery" | "color" | "timeline" | "export";
   showAdvancedColor: boolean;
+  timelinePlaying: boolean;
+  activeJourneyId: string | null;
 };
 
 export type AppState = {
@@ -99,6 +117,9 @@ export type AppState = {
     users: Preset[];
   };
   timeline: Timeline;
+  journeys: {
+    users: Journey[];
+  };
   ui: UiPreferences;
   renderRequestId: number;
   renderHint: RenderQualityHint;

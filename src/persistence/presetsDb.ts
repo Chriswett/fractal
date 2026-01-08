@@ -1,9 +1,10 @@
-import { Preset, Scene } from "../state/types";
+import { Journey, Preset, Scene } from "../state/types";
 
 const DB_NAME = "fraktaler-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const PRESETS_STORE = "presets";
 const SCENES_STORE = "scenes";
+const JOURNEYS_STORE = "journeys";
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -16,6 +17,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(SCENES_STORE)) {
         db.createObjectStore(SCENES_STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(JOURNEYS_STORE)) {
+        db.createObjectStore(JOURNEYS_STORE, { keyPath: "id" });
       }
     };
 
@@ -78,5 +82,28 @@ export async function getSavedScenes(): Promise<Scene[]> {
 export async function deleteScene(sceneId: string) {
   await withStore<void>(SCENES_STORE, "readwrite", (store) => {
     store.delete(sceneId);
+  });
+}
+
+export async function getUserJourneys(): Promise<Journey[]> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(JOURNEYS_STORE, "readonly");
+    const store = tx.objectStore(JOURNEYS_STORE);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result as Journey[]);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveUserJourney(journey: Journey) {
+  await withStore<void>(JOURNEYS_STORE, "readwrite", (store) => {
+    store.put(journey);
+  });
+}
+
+export async function deleteUserJourney(journeyId: string) {
+  await withStore<void>(JOURNEYS_STORE, "readwrite", (store) => {
+    store.delete(journeyId);
   });
 }

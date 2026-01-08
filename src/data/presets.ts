@@ -7,7 +7,7 @@ function makeScene(partial: Partial<Scene>): Scene {
   return {
     id: createId("scene"),
     fractalType: "mandelbrot",
-    params: { maxIter: 300, escapeRadius: 4 },
+    params: { maxIter: 300, escapeRadius: 4, parameter: 0 },
     viewport: { centerX: 0, centerY: 0, scale: 0.005 },
     color: {
       gradientStops: cloneStops(gradients[0].stops),
@@ -44,14 +44,20 @@ function preset(name: string, scene: Scene, tags: string[] = []): Preset {
   };
 }
 
+const baseColor = makeScene({}).color;
+
+function withGradient(index: number) {
+  return { ...baseColor, gradientStops: cloneStops(gradients[index].stops) };
+}
+
 export const builtinPresets: Preset[] = [
   preset(
     "Mandelbrot Classic",
     makeScene({
       fractalType: "mandelbrot",
-      params: { maxIter: 320, escapeRadius: 4 },
+      params: { maxIter: 320, escapeRadius: 4, parameter: 0 },
       viewport: { centerX: -0.5, centerY: 0, scale: 0.005 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[0].stops) }
+      color: withGradient(0)
     }),
     ["mandelbrot"]
   ),
@@ -59,19 +65,79 @@ export const builtinPresets: Preset[] = [
     "Seahorse Valley",
     makeScene({
       fractalType: "mandelbrot",
-      params: { maxIter: 480, escapeRadius: 4 },
+      params: { maxIter: 480, escapeRadius: 4, parameter: 0 },
       viewport: { centerX: -0.75, centerY: 0.1, scale: 0.0009 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[1].stops) }
+      color: withGradient(1)
     }),
     ["mandelbrot"]
+  ),
+  preset(
+    "Multibrot Trio",
+    makeScene({
+      fractalType: "multibrot3",
+      params: { maxIter: 360, escapeRadius: 4, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.005 },
+      color: withGradient(3)
+    }),
+    ["multibrot3"]
+  ),
+  preset(
+    "Multibrot Crescent",
+    makeScene({
+      fractalType: "multibrot3",
+      params: { maxIter: 420, escapeRadius: 4, parameter: 0 },
+      viewport: { centerX: -0.3, centerY: 0.25, scale: 0.0016 },
+      color: withGradient(2)
+    }),
+    ["multibrot3"]
+  ),
+  preset(
+    "Tricorn Classic",
+    makeScene({
+      fractalType: "tricorn",
+      params: { maxIter: 320, escapeRadius: 4, parameter: 1 },
+      viewport: { centerX: -0.2, centerY: 0, scale: 0.005 },
+      color: withGradient(1)
+    }),
+    ["tricorn"]
+  ),
+  preset(
+    "Tricorn Reef",
+    makeScene({
+      fractalType: "tricorn",
+      params: { maxIter: 420, escapeRadius: 4, parameter: 1 },
+      viewport: { centerX: -0.4, centerY: 0.55, scale: 0.0013 },
+      color: withGradient(0)
+    }),
+    ["tricorn"]
+  ),
+  preset(
+    "Burning Ship Classic",
+    makeScene({
+      fractalType: "burning-ship",
+      params: { maxIter: 420, escapeRadius: 4, parameter: 1 },
+      viewport: { centerX: -1.75, centerY: -0.03, scale: 0.004 },
+      color: withGradient(3)
+    }),
+    ["burning-ship"]
+  ),
+  preset(
+    "Burning Ship Hull",
+    makeScene({
+      fractalType: "burning-ship",
+      params: { maxIter: 520, escapeRadius: 4, parameter: 1 },
+      viewport: { centerX: -1.72, centerY: -0.02, scale: 0.0011 },
+      color: withGradient(0)
+    }),
+    ["burning-ship"]
   ),
   preset(
     "Julia Bloom",
     makeScene({
       fractalType: "julia",
-      params: { maxIter: 320, escapeRadius: 4, cRe: -0.70176, cIm: -0.3842 },
+      params: { maxIter: 320, escapeRadius: 4, cRe: -0.70176, cIm: -0.3842, parameter: 0 },
       viewport: { centerX: 0, centerY: 0, scale: 0.004 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[2].stops) }
+      color: withGradient(2)
     }),
     ["julia"]
   ),
@@ -79,40 +145,110 @@ export const builtinPresets: Preset[] = [
     "Julia Spiral",
     makeScene({
       fractalType: "julia",
-      params: { maxIter: 340, escapeRadius: 4, cRe: 0.285, cIm: 0.01 },
+      params: { maxIter: 340, escapeRadius: 4, cRe: 0.285, cIm: 0.01, parameter: 0 },
       viewport: { centerX: 0, centerY: 0, scale: 0.0038 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[3].stops) }
+      color: withGradient(3)
     }),
     ["julia"]
   ),
   preset(
-    "Sierpinski Light",
+    "Tricorn Julia Drift",
     makeScene({
-      fractalType: "sierpinski",
-      params: { depth: 6 },
-      viewport: { centerX: 0, centerY: 0, scale: 0.005 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[2].stops) }
+      fractalType: "tricorn-julia",
+      params: { maxIter: 340, escapeRadius: 4, cRe: -0.4, cIm: 0.6, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.004 },
+      color: withGradient(1)
     }),
-    ["sierpinski"]
+    ["tricorn-julia"]
   ),
   preset(
-    "Koch Curve",
+    "Tricorn Julia Halo",
     makeScene({
-      fractalType: "koch",
-      params: { depth: 5, variant: "curve" },
-      viewport: { centerX: 0, centerY: 0, scale: 0.005 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[0].stops) }
+      fractalType: "tricorn-julia",
+      params: { maxIter: 360, escapeRadius: 4, cRe: 0.32, cIm: -0.42, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.0036 },
+      color: withGradient(0)
     }),
-    ["koch"]
+    ["tricorn-julia"]
   ),
   preset(
-    "Koch Snowflake",
+    "Burning Ship Julia Ember",
     makeScene({
-      fractalType: "koch",
-      params: { depth: 4, variant: "snowflake" },
-      viewport: { centerX: 0, centerY: 0, scale: 0.005 },
-      color: { ...makeScene({}).color, gradientStops: cloneStops(gradients[1].stops) }
+      fractalType: "burning-ship-julia",
+      params: { maxIter: 360, escapeRadius: 4, cRe: -0.62, cIm: 0.32, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.004 },
+      color: withGradient(3)
     }),
-    ["koch"]
+    ["burning-ship-julia"]
+  ),
+  preset(
+    "Burning Ship Julia Smoke",
+    makeScene({
+      fractalType: "burning-ship-julia",
+      params: { maxIter: 380, escapeRadius: 4, cRe: 0.18, cIm: 0.64, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.0036 },
+      color: withGradient(2)
+    }),
+    ["burning-ship-julia"]
+  ),
+  preset(
+    "Newton Basins",
+    makeScene({
+      fractalType: "newton-z3",
+      params: { maxIter: 40, tolerance: 1e-6, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.005 },
+      color: withGradient(1)
+    }),
+    ["newton-z3"]
+  ),
+  preset(
+    "Newton Petals",
+    makeScene({
+      fractalType: "newton-z3",
+      params: { maxIter: 50, tolerance: 1e-6, parameter: 0 },
+      viewport: { centerX: 0.25, centerY: 0.15, scale: 0.0025 },
+      color: withGradient(0)
+    }),
+    ["newton-z3"]
+  ),
+  preset(
+    "Halley Basins",
+    makeScene({
+      fractalType: "halley-z3",
+      params: { maxIter: 40, tolerance: 1e-6, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.005 },
+      color: withGradient(2)
+    }),
+    ["halley-z3"]
+  ),
+  preset(
+    "Halley Filigree",
+    makeScene({
+      fractalType: "halley-z3",
+      params: { maxIter: 50, tolerance: 1e-6, parameter: 0 },
+      viewport: { centerX: -0.2, centerY: 0.1, scale: 0.0024 },
+      color: withGradient(3)
+    }),
+    ["halley-z3"]
+  ),
+  preset(
+    "Newton sin z",
+    makeScene({
+      fractalType: "newton-sin",
+      params: { maxIter: 42, tolerance: 1e-6, parameter: 0 },
+      viewport: { centerX: 0, centerY: 0, scale: 0.006 },
+      color: withGradient(1)
+    }),
+    ["newton-sin"]
+  ),
+  preset(
+    "Newton sin z Lattice",
+    makeScene({
+      fractalType: "newton-sin",
+      params: { maxIter: 48, tolerance: 1e-6, parameter: 0 },
+      viewport: { centerX: 1.2, centerY: 0, scale: 0.0032 },
+      color: withGradient(0)
+    }),
+    ["newton-sin"]
   )
 ];

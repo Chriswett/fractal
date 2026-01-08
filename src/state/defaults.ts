@@ -32,7 +32,7 @@ export const defaultRenderSettings: RenderSettings = {
 export const defaultScene: Scene = {
   id: createId("scene"),
   fractalType: "mandelbrot",
-  params: { maxIter: 300, escapeRadius: 4 },
+  params: { maxIter: 300, escapeRadius: 4, parameter: 0 },
   viewport: defaultViewport,
   color: defaultColorProfile,
   render: defaultRenderSettings

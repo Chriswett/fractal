@@ -8,7 +8,13 @@ export class RenderScheduler {
   private abortController: AbortController | null = null;
   private finalTimer: number | null = null;
 
-  render(scene: Scene, canvas: HTMLCanvasElement | null, renderer: IFractalRenderer | null, hint: RenderQualityHint) {
+  render(
+    scene: Scene,
+    canvas: HTMLCanvasElement | null,
+    renderer: IFractalRenderer | null,
+    hint: RenderQualityHint,
+    suppressFinal: boolean = false
+  ) {
     if (!canvas || !renderer) {
       return;
     }
@@ -20,9 +26,11 @@ export class RenderScheduler {
 
     if (hint === "interactive") {
       this.startRender(scene, canvas, renderer, "interactive");
-      this.finalTimer = window.setTimeout(() => {
-        this.startRender(scene, canvas, renderer, "final");
-      }, FINAL_DEBOUNCE_MS);
+      if (!suppressFinal) {
+        this.finalTimer = window.setTimeout(() => {
+          this.startRender(scene, canvas, renderer, "final");
+        }, FINAL_DEBOUNCE_MS);
+      }
     } else {
       this.startRender(scene, canvas, renderer, "final");
     }
@@ -50,13 +58,13 @@ export class RenderScheduler {
     const passTiles = hint === "interactive" ? [sortedTiles[0]] : sortedTiles;
 
     const baseScale = Math.max(1, scene.render.resolutionScale || 1);
-    const qualityScale = hint === "interactive" ? 1.5 : 1;
+    const resolutionScale = Math.max(1, baseScale);
 
     const passes: RenderPass[] = passTiles.map((tileSize, index) => ({
       index,
       count: passTiles.length,
       tileSize,
-      resolutionScale: Math.max(1, baseScale * tileSize * qualityScale)
+      resolutionScale
     }));
 
     for (const pass of passes) {

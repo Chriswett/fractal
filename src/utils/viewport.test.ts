@@ -21,6 +21,6 @@ describe("viewport math", () => {
   it("pans by screen delta scaled to world units", () => {
     const next = panViewport(baseViewport, 10, -5);
     expect(next.centerX).toBeCloseTo(-10, 6);
-    expect(next.centerY).toBeCloseTo(5, 6);
+    expect(next.centerY).toBeCloseTo(-5, 6);
   });
 });

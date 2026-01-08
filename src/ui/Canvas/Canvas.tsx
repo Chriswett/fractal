@@ -7,13 +7,25 @@ import { FractalType, Scene } from "../../state/types";
 import { panViewport, zoomViewport } from "../../utils/viewport";
 import { IFractalRenderer } from "../../engine/types";
 
-const webglTypes: FractalType[] = ["mandelbrot", "julia"];
+const webglTypes: FractalType[] = [
+  "mandelbrot",
+  "multibrot3",
+  "tricorn",
+  "burning-ship",
+  "julia",
+  "tricorn-julia",
+  "burning-ship-julia",
+  "newton-z3",
+  "halley-z3",
+  "newton-sin"
+];
 
 export function Canvas() {
   const renderBridge = useContext(RenderContext);
   const scene = useStore((state) => state.scene);
   const renderRequestId = useStore((state) => state.renderRequestId);
   const renderHint = useStore((state) => state.renderHint);
+  const timelinePlaying = useStore((state) => state.ui.timelinePlaying);
   const scheduler = useMemo(() => new RenderScheduler(), []);
   const webglCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cpuCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -48,8 +60,8 @@ export function Canvas() {
     if (!activeCanvas) {
       return;
     }
-    scheduler.render(sceneRef.current, activeCanvas, rendererRef.current, renderHint);
-  }, [renderRequestId, renderHint, activeIsWebgl, scheduler]);
+    scheduler.render(sceneRef.current, activeCanvas, rendererRef.current, renderHint, timelinePlaying);
+  }, [renderRequestId, renderHint, activeIsWebgl, scheduler, timelinePlaying]);
 
   useEffect(() => {
     const container = containerRef.current;

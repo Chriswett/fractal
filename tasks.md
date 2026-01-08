@@ -1,6 +1,6 @@
-# tasks.md - v1 tasks and acceptance criteria
+# tasks.md - v2 tasks and acceptance criteria
 
-This breakdown follows plan.md and architecture.md. Tasks are grouped to allow parallel work; dependencies are noted per task.
+This breakdown follows plan.md and architecture.md for v2 scope. Tasks are grouped to allow parallel work; dependencies are noted per task.
 
 ## Track A - App shell and UI framework
 
@@ -31,7 +31,8 @@ Acceptance criteria:
 ### B1. Scene model + serialization
 Dependencies: none
 Acceptance criteria:
-- Scene, Preset, Timeline types match architecture.md and are JSON-serializable.
+- Scene, Preset, Timeline, Journey types match architecture.md and are JSON-serializable.
+- Keyframe timing uses milliseconds.
 - Scene is the single source of truth for rendering parameters.
 - Scene can be exported/imported as JSON without custom transform logic.
 
@@ -45,7 +46,7 @@ Acceptance criteria:
 ### B3. App state store
 Dependencies: B1
 Acceptance criteria:
-- Central store holds Scene, presets, timeline, and UI preferences.
+- Central store holds Scene, timeline, journeys, presets, and UI preferences.
 - UI components read/write via the store; no render-affecting state local to UI.
 - State updates trigger rendering through the scheduler (latest intent wins).
 
@@ -66,7 +67,7 @@ Acceptance criteria:
 - Inactive/old jobs never commit pixels to the canvas.
 - Debounced idle refinement (150-250 ms) triggers final-quality pass.
 
-## Track D - WebGL2 escape-time (Mandelbrot/Julia)
+## Track D - WebGL2 escape-time (Mandelbrot/Julia families)
 
 ### D1. WebGL2 pipeline and shader base
 Dependencies: C1, B1
@@ -82,27 +83,40 @@ Acceptance criteria:
 - Rendering can be interrupted between passes by jobId checks.
 - Image is shown after each pass; no spinners or blocking loaders.
 
-### D3. Mandelbrot + Julia parameterization
+### D3. Mandelbrot-family parameterization
 Dependencies: D1
 Acceptance criteria:
-- Mandelbrot uses maxIter and escapeRadius from Scene.params.
-- Julia adds cRe/cIm and uses same rendering pipeline.
+- Mandelbrot, Multibrot d=3, Tricorn, Burning Ship share a pipeline.
+- maxIter and escapeRadius come from Scene.params.
 - Switching fractal type updates shader parameters immediately.
 
-## Track E - CPU fractals (Sierpinski/Koch)
+### D4. Julia-family parameterization
+Dependencies: D1
+Acceptance criteria:
+- Julia, Tricorn-Julia, Burning Ship-Julia share a pipeline.
+- cRe/cIm, maxIter, escapeRadius come from Scene.params.
+- Switching fractal type updates shader parameters immediately.
 
-### E1. CPU renderers with progressive depth
+## Track E - WebGL2 Newton/Halley
+
+### E1. Newton/Halley shader iteration
 Dependencies: C1, B1
 Acceptance criteria:
-- Sierpinski and Koch render on CPU to 2D canvas.
-- Progressive depth rendering yields quick coarse image then refines.
-- Rendering can be canceled between batches by jobId.
+- Newton z^3-1, Halley z^3-1, Newton sin z implemented in fragment shader.
+- Tolerance and maxIter come from Scene.params.
 
-### E2. Optional worker offload
+### E2. Root-based coloring
 Dependencies: E1
 Acceptance criteria:
-- CPU rendering can run in a WebWorker without blocking UI.
-- Results from old jobId are ignored.
+- Converged root selects base color.
+- Iteration count modulates brightness/contrast for detail.
+- Non-converged points fall back to a stable background.
+
+### E3. Progressive rendering for Newton/Halley
+Dependencies: E1, C1
+Acceptance criteria:
+- Progressive passes run from coarse to fine.
+- Rendering can be interrupted between passes by jobId checks.
 
 ## Track F - Interaction (pan, zoom, viewport)
 
@@ -143,6 +157,7 @@ Dependencies: B1, B2
 Acceptance criteria:
 - Built-in presets load from JSON at startup.
 - Preset selection updates Scene and triggers render.
+- Presets cover all v2 fractal types.
 
 ### H2. User presets (CRUD)
 Dependencies: H1, B3
@@ -163,7 +178,7 @@ Acceptance criteria:
 Dependencies: B1, B3
 Acceptance criteria:
 - Keyframe list with viewport only.
-- Add/remove keyframes and edit time.
+- Add/remove keyframes and edit time in ms.
 - Serialization matches architecture.md.
 
 ### I2. Playback engine
@@ -172,6 +187,14 @@ Acceptance criteria:
 - Playback interpolates center linearly and scale in log-space.
 - During playback: interactive quality rendering.
 - On pause: final-quality refinement after debounce.
+
+### I3. Journeys (saved zoom travel)
+Dependencies: I1, B3
+Acceptance criteria:
+- User can create, rename, delete journeys.
+- Journey stores Scene + Timeline and persists in IndexedDB.
+- Selecting a journey loads its Scene + Timeline and can auto-play.
+- Edits update the active journey.
 
 ## Track J - Export and persistence
 
@@ -194,6 +217,12 @@ Acceptance criteria:
 - UI preferences saved in LocalStorage.
 - Preferences restore on reload without affecting Scene integrity.
 
+### J4. Persist journeys
+Dependencies: I3
+Acceptance criteria:
+- Journeys saved to IndexedDB.
+- Journeys load on startup without blocking UI.
+
 ## Track K - UI polish and performance
 
 ### K1. Motion and transitions
@@ -203,9 +232,8 @@ Acceptance criteria:
 - No animation blocks rendering or input.
 
 ### K2. Performance pass
-Dependencies: C1, D2, E1
+Dependencies: C1, D2, E3
 Acceptance criteria:
 - Rendering is always cancelable and responsive.
 - No queued render jobs; latest intent wins.
 - Progressive rendering visible and stable across interactions.
-

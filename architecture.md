@@ -23,7 +23,7 @@ Ansvarar för presentation och användarinteraktion.
 - App Shell (layout, routing)
 - Central Canvas (fraktalrendering)
 - Sidopanel:
-  - Fractal Gallery (presets)
+  - Fractal Gallery (parameter + presets)
   - Color Studio
   - Timeline (zoomresor)
   - Export
@@ -103,6 +103,7 @@ Ansvarar för:
 ### 2.6 Persistens och export
 - IndexedDB:
   - Användarens presets
+  - Sparade zoomresor (journeys)
   - Sparade scener
 - LocalStorage:
   - UI-preferenser
@@ -119,7 +120,9 @@ Ansvarar för:
 
 #### `FractalType`
 ```ts
-"mandelbrot" | "julia" | "sierpinski" | "koch"
+"mandelbrot" | "multibrot3" | "tricorn" | "burning-ship"
+| "julia" | "tricorn-julia" | "burning-ship-julia"
+| "newton-z3" | "halley-z3" | "newton-sin"
 
 Viewport
 {
@@ -130,19 +133,35 @@ Viewport
 }
 
 FractalParams
-* Mandelbrot:
+* Mandelbrot / Multibrot / Tricorn / Burning Ship:
   * maxIter
   * escapeRadius
-* Julia:
+  * parameter (number)
+    - Mandelbrot/Multibrot: phase (grader)
+    - Tricorn: conjugation blend (0..1)
+    - Burning Ship: fold blend (0..1)
+* Julia / Tricorn-Julia / Burning Ship-Julia:
   * cRe
   * cIm
   * maxIter
   * escapeRadius
-* Sierpinski:
-  * depth
-* Koch:
-  * depth
-  * variant?: "curve" | "snowflake"
+  * parameter (number)
+    - C angle (grader)
+* Newton (z^3-1):
+  * maxIter
+  * tolerance
+  * parameter (number)
+    - phase (grader)
+* Halley (z^3-1):
+  * maxIter
+  * tolerance
+  * parameter (number)
+    - phase (grader)
+* Newton (sin z):
+  * maxIter
+  * tolerance
+  * parameter (number)
+    - phase (grader)
 
 ColorProfile
 {
@@ -183,6 +202,15 @@ Preset
   thumbnail?: string
 }
 
+Journey
+{
+  id: string
+  name: string
+  kind: "user"
+  scene: Scene
+  timeline: Timeline
+}
+
 Timeline
 {
   durationMs: number
@@ -191,29 +219,26 @@ Timeline
 
 Keyframe
 {
-  t: number           // 0..1 eller ms
+  t: number           // ms
   viewport: Viewport
 }
 
 4. Renderingpipeline
 
-4.1 Escape-time (Mandelbrot / Julia) – WebGL2
-- Fragment shader beräknar iteration per pixel
+4.1 Escape-time (Mandelbrot / Multibrot / Tricorn / Burning Ship + Julia-varianter) ? WebGL2
+- Fragment shader ber?knar iteration per pixel
 - Smooth coloring i shader
 - ColorProfile appliceras i shader
 - Progressiv rendering
-- Render till offscreen framebuffer i låg upplösning
+- Render till offscreen framebuffer i l?g uppl?sning
 - Skala upp till canvas
-- Upprepa med mindre tileSize tills 1×1
+- Upprepa med mindre tileSize tills 1x1
 
-4.2 Geometriska fraktaler – CPU + Canvas
-- Sierpinski:
-  * Triangelsubdivision
-  * Progressiv depth
-- Koch:
-  * Segment-subdivision
-  * Progressiv depth
-- Kan köras i WebWorker för att inte blockera UI.
+4.2 Newton/Halley (z^3-1, sin z) ? WebGL2
+- Fragment shader itererar Newton/Halley per pixel
+- Konvergens styrs av tolerance
+- Root-baserad f?rgning (rot-id + iterationsbaserad shading)
+- Progressiv rendering
 
 5. Responsiveness och avbruten rendering (KRITISKT KRAV)
 - Grundprincip
@@ -276,6 +301,7 @@ Keyframe
 - Modell
   * Keyframe-baserad
   * Endast Viewport förändras över tid
+  * Journeys: sparad Scene + Timeline (hel resa)
 - Interpolering
   * Center: linjär
   * Scale: interpolera i log-space
@@ -286,6 +312,7 @@ Keyframe
 
 8. Presets och galleri
 - Built-in presets levereras som JSON
+- Gallery visar parameterreglage per fraktaltyp (range + input) och uppdaterar endast vid release.
 - User presets lagras i IndexedDB
 - Användaren kan:
   * Skapa

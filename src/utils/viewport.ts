@@ -8,7 +8,7 @@ export function screenToWorld(
   height: number
 ) {
   const dx = x - width / 2;
-  const dy = y - height / 2;
+  const dy = height / 2 - y;
   const rotation = viewport.rotation ?? 0;
   const cosR = Math.cos(rotation);
   const sinR = Math.sin(rotation);
@@ -24,8 +24,9 @@ export function panViewport(viewport: Viewport, dx: number, dy: number): Viewpor
   const rotation = viewport.rotation ?? 0;
   const cosR = Math.cos(rotation);
   const sinR = Math.sin(rotation);
-  const rotatedX = dx * cosR - dy * sinR;
-  const rotatedY = dx * sinR + dy * cosR;
+  const flippedY = -dy;
+  const rotatedX = dx * cosR - flippedY * sinR;
+  const rotatedY = dx * sinR + flippedY * cosR;
   return {
     ...viewport,
     centerX: viewport.centerX - rotatedX * viewport.scale,
